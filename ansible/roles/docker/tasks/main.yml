@@ -19,6 +19,9 @@
     repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
     state: present
 
+- name: Permissão de leitura à chave
+  shell: chmod a+r /etc/apt/keyrings/docker.asc
+
 - name: Instalação do Docker
   apt:
     name:

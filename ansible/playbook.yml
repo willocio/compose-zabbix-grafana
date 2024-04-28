@@ -1,6 +1,5 @@
 ---
 - hosts: localhost
   become: true
-  gather_facts: no
   roles:
-    - zabbix
+    - docker

@@ -1,0 +1,97 @@
+networks:
+  zabbix-net:
+    driver: bridge
+
+services:
+  mysql:
+    container_name: mysql
+    image: mysql:latest
+    command:
+      - mysqld 
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_bin
+      - --log_bin_trust_function_creators=1
+    environment:
+      MYSQL_ROOT_PASSWORD: Lanrete
+      MYSQL_DATABASE: zabbix
+      MYSQL_USER: zabbix
+      MYSQL_PASSWORD: password
+    ports:
+      - 3306:3306
+    volumes:
+      - '/usr/share/zabbix-sql-scripts/mysql/server.sql.gz:/var/lib/mysql'
+    networks:
+      - zabbix-net
+
+  zabbix-server:
+    container_name: zabbix-server
+    image: zabbix/zabbix-server-mysql:6.0-ubuntu-latest
+    environment:
+      DB_SERVER_HOST: mysql
+      MYSQL_DATABASE: zabbix
+      MYSQL_USER: zabbix
+      MYSQL_PASSWORD: password
+    networks:
+      - zabbix-net
+    links:
+      - mysql
+    restart: always
+    ports:
+      - 10051:10051
+    volumes:
+      - './zabbix/alertscripts:/usr/lib/zabbix/alertscripts'
+    depends_on:
+      - mysql
+
+  zabbix-front-end:
+    container_name: zabbix-front-end
+    image: zabbix/zabbix-web-nginx-mysql:6.0-ubuntu-latest
+    environment:
+      DB_SERVER_HOST: mysql
+      MYSQL_DATABASE: zabbix
+      MYSQL_USER: zabbix
+      MYSQL_PASSWORD: password
+      PHP_TZ: America/Recife
+    networks:
+      - zabbix-net
+    links:
+      - mysql
+    restart: always
+    ports:
+      - 80:8080
+    depends_on:
+      - mysql
+
+  zabbix-agent:
+    container_name: zabbix-agent
+    image: zabbix/zabbix-agent:ubuntu-6.0-latest
+    user: root
+    networks:
+      - zabbix-net
+    links:
+      - zabbix-server
+    restart: always
+    privileged: true
+    volumes:
+      - /var/run:/var/run
+    ports:
+      - 10050:10050
+    environment:
+      - ZBX_HOSTNAME=Zabbix server
+      - ZBX_SERVER_HOST=zabbix-server
+      - ZBX_PASSIVESERVERS=172.18.0.1/24
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana
+    networks:
+      - zabbix-net
+    links:
+      - mysql
+      - zabbix-server
+    restart: always
+    ports:
+      - 3000:3000
+    depends_on:
+      - mysql
+      - zabbix-server
